@@ -1,32 +1,48 @@
 hello guy
 欢淫加入新世纪民主党 QQ：3023371460 1503367235
-<script type="text/javascript "> 
-    <?php if(is_home()) echo 'var isindex=true;var title="";';else echo 'var isindex=false;var title="',  get_the_title(),'";'; ?> 
-    <?php if((($display_name = wp_get_current_user()->display_name) != null)) echo 'var visitor="',$display_name,'";'; else if(isset($_COOKIE['comment_author_'.COOKIEHASH])) echo 'var visitor="',$_COOKIE['comment_author_'.COOKIEHASH],'";';else echo 'var visitor="游客";';echo "\n"; ?> 
-    </script> 
-    <script type="text/javascript" src="<?php echo get_template_directory_uri(); ?>/js/spig.js" charset="gb2312"></script> 
-    <div id="spig" class="spig">
-        <div id="message">加载中……</div> 
-        <div id="mumu" class="mumu"></div> 
-    </div> 
-    <!--.end spig--> 
-    <span class="hitokoto" id="hitokoto" style="display:none">Loading...</span> 
-       <div id="hjsbox" style="display:none"> 
-        </div> 
-<script>
-setTimeout("getkoto()",1000); 
-            var t; 
-            function getkoto(){ 
-                var hjs = document.createElement('script'); 
-                hjs.setAttribute('id', 'hjs'); 
-                hjs.setAttribute('src', 'https://api.lwl12.com/hitokoto/main/get?encode=json'); 
-                document.getElementById("hjsbox").appendChild(hjs); 
-                t=setTimeout("getkoto()",2000); 
-            } 
-            function echokoto(result){ 
-                var hc = eval(result); 
-                //$("#hitokoto").fadeTo(300,0); 
-                document.getElementById("hitokoto").innerHTML = hc.hitokoto; 
-                //$("#hitokoto").fadeTo(300,0.75); 
-            }
-</script>
+name: Typecho Build Dev Ci
+
+on: [push, pull_request]
+
+jobs:
+  php:
+    name: PHP ${{ matrix.php }} Tests
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.2', '7.3', '7.4', '8.0']
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Setup PHP only
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php }}
+    - name: Test
+      run: |
+        cd ./tools/
+        make test
+  build:
+    name: Typecho Build
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Install tree
+      run: sudo apt-get -y install tree
+    - name: Build
+      run: |
+        cd ./tools/
+        make update
+        make rm
+        mkdir build/usr/uploads/
+        chmod 777 build/usr/uploads/
+        tree -d build
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2
+      with:
+          name: typecho_build
+          path: ./tools/build/
